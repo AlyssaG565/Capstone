@@ -20,8 +20,11 @@ users.post('/register', (req, res) => {
   }
 
   User.findOne({
-    email: req.body.email
+    where: {
+      email: req.body.email
+    }
   })
+    //TODO bcrypt
     .then(user => {
       if (!user) {
         bcrypt.hash(req.body.password, 10, (err, hash) => {
@@ -45,32 +48,24 @@ users.post('/register', (req, res) => {
 
 users.post('/login', (req, res) => {
   User.findOne({
-    email: req.body.email
+    where: {
+      email: req.body.email
+    }
   })
     .then(user => {
       if (user) {
         if (bcrypt.compareSync(req.body.password, user.password)) {
-          // Passwords match
-          const payload = {
-            _id: user._id,
-            first_name: user.first_name,
-            last_name: user.last_name,
-            email: user.email
-          }
-          let token = jwt.sign(payload, process.env.SECRET_KEY, {
+          let token = jwt.sign(user.dataValues, process.env.SECRET_KEY, {
             expiresIn: 1440
           })
           res.send(token)
-        } else {
-          // Passwords don't match
-          res.json({ error: 'User does not exist' })
         }
       } else {
-        res.json({ error: 'User does not exist' })
+        res.status(400).json({ error: 'User does not exist' })
       }
     })
     .catch(err => {
-      res.send('error: ' + err)
+      res.status(400).json({ error: err })
     })
 })
 
@@ -78,7 +73,9 @@ users.get('/profile', (req, res) => {
   var decoded = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY)
 
   User.findOne({
-    _id: decoded._id
+    where: {
+      id: decoded.id
+    }
   })
     .then(user => {
       if (user) {
